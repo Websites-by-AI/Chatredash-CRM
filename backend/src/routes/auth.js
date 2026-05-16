@@ -5,20 +5,21 @@ const User = require('../models/User');
 const OTP = require('../models/OTP');
 const { makeToken, authenticate } = require('../middleware/auth');
 
+const nowISO = () => new Date().toISOString();
+
 router.post('/send-otp', async (req, res) => {
   try {
     const phone = (req.body.phone || '').trim();
     if (!phone || phone.length < 10) {
       return res.status(400).json({ error: 'شماره موبایل نامعتبر' });
     }
-    const digits = '0123456789';
     let code = '';
-    for (let i = 0; i < 5; i++) code += digits[Math.floor(Math.random() * 10)];
+    for (let i = 0; i < 5; i++) code += Math.floor(Math.random() * 10);
+    const expires_at = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await OTP.findOneAndUpdate(
       { phone },
-      { phone, code, expiresAt },
+      { $set: { phone, code, expires_at } },
       { upsert: true, new: true }
     );
     return res.json({ sent: true, dev_otp: code, message: 'کد یک‌بارمصرف ارسال شد (حالت آزمایشی)' });
@@ -36,26 +37,27 @@ router.post('/verify-otp', async (req, res) => {
     if (!rec || rec.code !== code) {
       return res.status(400).json({ error: 'کد وارد شده نامعتبر است' });
     }
-    if (rec.expiresAt < new Date()) {
+    if (rec.expires_at && new Date(rec.expires_at) < new Date()) {
       return res.status(400).json({ error: 'کد منقضی شده' });
     }
 
-    let user = await User.findOne({ phone }).lean();
+    let user = await User.findOne({ phone });
     if (!user) {
-      user = await User.create({
-        userId: uuidv4(),
+      const newUser = {
+        id: uuidv4(),
         phone,
         name: '',
         role: 'registrant',
-      });
-      user = user.toObject();
+        created_at: nowISO(),
+      };
+      user = await User.create(newUser);
+      user = newUser;
     }
 
     await OTP.deleteOne({ phone });
 
-    const token = makeToken(user.userId, user.role);
-    const { _id, __v, ...userOut } = user;
-    return res.json({ token, user: userOut });
+    const token = makeToken(user.id, user.role);
+    return res.json({ token, user });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -63,15 +65,11 @@ router.post('/verify-otp', async (req, res) => {
 
 router.get('/me', authenticate, async (req, res) => {
   try {
-    const Referrer = require('../models/Referrer');
-    const { _id, __v, ...userOut } = req.user;
-    const out = { user: userOut };
+    const out = { user: req.user };
     if (req.user.role === 'referrer') {
-      const ref = await Referrer.findOne({ userId: req.user.userId }).lean();
-      if (ref) {
-        const { _id: rId, __v: rV, ...refOut } = ref;
-        out.referrer = refOut;
-      }
+      const Referrer = require('../models/Referrer');
+      const ref = await Referrer.findOne({ user_id: req.user.id });
+      if (ref) out.referrer = ref;
     }
     return res.json(out);
   } catch (err) {

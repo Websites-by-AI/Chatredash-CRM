@@ -35,7 +35,9 @@ export default function AdminPanel() {
   const [refs, setRefs] = useState([]);
   const [regs, setRegs] = useState([]);
   const [payouts, setPayouts] = useState([]);
-  const [settings, setSettings] = useState({ base_price: 0, default_commission_pct: 0, default_discount_pct: 0 });
+  const [settings, setSettings] = useState({ base_price: 0, default_commission_pct: 0, default_discount_pct: 0, openai_api_key: '' });
+  const [openaiKeyInput, setOpenaiKeyInput] = useState('');
+  const [openaiKeySet, setOpenaiKeySet] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
@@ -78,8 +80,11 @@ export default function AdminPanel() {
     if (p.status === 'fulfilled') setPayouts(p.value.data);
     else failed.push('payouts');
 
-    if (st.status === 'fulfilled') setSettings(st.value.data);
-    else failed.push('settings');
+    if (st.status === 'fulfilled') {
+      setSettings(st.value.data);
+      setOpenaiKeySet(st.value.data.openai_api_key_set || false);
+      setOpenaiKeyInput('');
+    } else failed.push('settings');
 
     if (failed.length) {
       const firstErr = results.find(x => x.status === 'rejected');
@@ -123,12 +128,15 @@ export default function AdminPanel() {
   };
 
   const saveSettings = async () => {
-    await api.put('/admin/settings', {
+    const payload = {
       base_price: parseFloat(settings.base_price),
       default_commission_pct: parseFloat(settings.default_commission_pct),
       default_discount_pct: parseFloat(settings.default_discount_pct),
-    });
+    };
+    if (openaiKeyInput.trim()) payload.openai_api_key = openaiKeyInput.trim();
+    await api.put('/admin/settings', payload);
     toast.success('تنظیمات ذخیره شد');
+    refresh();
   };
 
   const copyLink = (code) => {
@@ -381,6 +389,47 @@ export default function AdminPanel() {
                   <Input value={settings.default_commission_pct} onChange={(e) => setSettings({ ...settings, default_commission_pct: e.target.value })} className="num text-left" dir="ltr" data-testid="settings-commission" />
                 </div>
                 <Button onClick={saveSettings} className="bg-slate-900" data-testid="settings-save">ذخیره تنظیمات</Button>
+              </div>
+
+              {/* OpenAI API Key */}
+              <div className="mt-6 pt-6 border-t border-slate-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="font-bold text-slate-900">کلید OpenAI</div>
+                  {openaiKeySet ? (
+                    <span className="text-xs bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5">✓ فعال</span>
+                  ) : (
+                    <span className="text-xs bg-amber-100 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">تنظیم نشده</span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+                  برای استفاده از استودیو تولید محتوا، کلید API از{' '}
+                  <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">platform.openai.com</a>
+                  {' '}وارد کنید.
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    type="password"
+                    value={openaiKeyInput}
+                    onChange={(e) => setOpenaiKeyInput(e.target.value)}
+                    placeholder={openaiKeySet ? '••••••• (کلید فعلی فعال است)' : 'sk-...'}
+                    className="num text-left flex-1"
+                    dir="ltr"
+                    data-testid="settings-openai-key"
+                  />
+                  <Button
+                    onClick={async () => {
+                      if (!openaiKeyInput.trim()) return toast.error('کلید را وارد کنید');
+                      await api.put('/admin/settings', { openai_api_key: openaiKeyInput.trim() });
+                      toast.success('کلید OpenAI ذخیره شد');
+                      setOpenaiKeyInput('');
+                      refresh();
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 whitespace-nowrap"
+                    data-testid="settings-openai-save"
+                  >
+                    ذخیره کلید
+                  </Button>
+                </div>
               </div>
 
               <div className="mt-8 pt-6 border-t border-slate-200">

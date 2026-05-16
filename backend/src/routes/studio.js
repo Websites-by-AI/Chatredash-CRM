@@ -3,7 +3,10 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { authenticate } = require('../middleware/auth');
 const Content = require('../models/Content');
+const Settings = require('../models/Settings');
 const { extractJson } = require('../utils/helpers');
+
+const nowISO = () => new Date().toISOString();
 
 router.use(authenticate);
 
@@ -13,53 +16,36 @@ const SYSTEM_PROMPT = `شما یک استراتژیست محتوا و کارشن
 هیچ متنی قبل یا بعد از JSON ننویس. از \`\`\`json نیز استفاده نکن.
 محتوا را به فارسی روان، انگیزه‌بخش و عملی بنویس.`;
 
-function buildUserPrompt(payload) {
+function buildUserPrompt(p) {
   return `بر اساس اطلاعات زیر یک بسته محتوای کامل تولید کن:
-
-نام آزمون: ${payload.exam_name}
-رتبه/نتیجه: ${payload.rank}
-رشته: ${payload.field || '—'}
-روش مطالعه: ${payload.study_strategy}
-منابع: ${payload.resources}
-نقاط قوت: ${payload.strengths || '—'}
-دستاوردها: ${payload.achievements || '—'}
-مخاطب هدف: ${payload.target_audience || 'داوطلبان آزمون'}
-لحن: ${payload.tone || 'صمیمی و حرفه‌ای'}
+نام آزمون: ${p.exam_name}  رتبه/نتیجه: ${p.rank}  رشته: ${p.field || '—'}
+روش مطالعه: ${p.study_strategy}  منابع: ${p.resources}
+نقاط قوت: ${p.strengths || '—'}  دستاوردها: ${p.achievements || '—'}
+مخاطب هدف: ${p.target_audience || 'داوطلبان آزمون'}  لحن: ${p.tone || 'صمیمی و حرفه‌ای'}
 
 خروجی را دقیقاً با این ساختار JSON بازگردان:
-{
-  "title": "عنوان جذاب و SEO-friendly",
-  "summary": "خلاصه ۲ تا ۳ خطی از تجربه",
-  "blog_post": "متن کامل وبلاگ حداقل ۶ پاراگراف با تیترهای مارک‌داون (## ، ###) و لیست‌ها",
-  "video_script": "اسکریپت ویدیو با ساختار [Hook] [Intro] [Main 1-3] [CTA] حداقل ۴۰۰ کلمه",
-  "notebook_notes": "نوت‌بوک آموزشی به سبک مارک‌داون با بخش‌بندی روش مطالعه، منابع، تحلیل، نتیجه‌گیری",
-  "social_posts": [
-     "پست لینکدین حرفه‌ای حدود ۲۰۰ کلمه با ایموجی مناسب",
-     "کپشن اینستاگرام جذاب با هشتگ‌های مرتبط"
-  ],
-  "resume_summary": "خلاصه رزومه ۳ تا ۵ خطی مناسب درج در رزومه یا لینکدین",
-  "recommended_prompt": "یک پرامپت آماده و قابل استفاده در ابزارهای دیگر AI برای ادامه کار",
-  "recommended_platforms": ["لینکدین", "اینستاگرام", "وبلاگ شخصی"],
-  "best_title": "بهترین تیتر پیشنهادی",
-  "best_cta": "بهترین Call To Action",
-  "keywords": ["کلمه۱", "کلمه۲", "کلمه۳"]
+{"title":"عنوان جذاب","summary":"خلاصه ۲-۳ خطی","blog_post":"متن کامل وبلاگ با مارک‌داون","video_script":"اسکریپت ویدیو","notebook_notes":"نوت‌بوک آموزشی","social_posts":["پست لینکدین","کپشن اینستاگرام"],"resume_summary":"خلاصه رزومه","recommended_prompt":"پرامپت آماده","recommended_platforms":["لینکدین","اینستاگرام"],"best_title":"بهترین تیتر","best_cta":"بهترین CTA","keywords":["کلمه۱","کلمه۲"]}
+فقط JSON برگردان.`;
 }
 
-تمام فیلدها باید پر و معنادار باشند. فقط JSON برگردان.`;
+async function getApiKey() {
+  const envKey = process.env.OPENAI_API_KEY;
+  if (envKey) return envKey;
+  try {
+    const s = await Settings.findOne({ settings_id: 'global' });
+    if (s?.openai_api_key && s.openai_api_key.startsWith('sk-')) return s.openai_api_key;
+  } catch {}
+  return null;
 }
 
 async function callOpenAI(systemMsg, userMsg) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
-
+  const apiKey = await getApiKey();
+  if (!apiKey) throw new Error('کلید OpenAI تنظیم نشده است. از پنل ادمین → تنظیمات وارد کنید.');
   const OpenAI = require('openai');
   const client = new OpenAI({ apiKey });
   const resp = await client.chat.completions.create({
     model: 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: systemMsg },
-      { role: 'user', content: userMsg },
-    ],
+    messages: [{ role: 'system', content: systemMsg }, { role: 'user', content: userMsg }],
     temperature: 0.7,
     max_tokens: 4000,
   });
@@ -68,27 +54,25 @@ async function callOpenAI(systemMsg, userMsg) {
 
 router.post('/generate', async (req, res) => {
   try {
-    const { exam_name, rank, study_strategy, resources, field, strengths, achievements, target_audience, tone } = req.body;
+    const { exam_name, rank, study_strategy } = req.body;
     if (!exam_name || !rank || !study_strategy) {
       return res.status(400).json({ error: 'اطلاعات اصلی الزامی است (آزمون، رتبه، روش مطالعه)' });
     }
-
-    const userPrompt = buildUserPrompt(req.body);
     let data;
     try {
-      const raw = await callOpenAI(SYSTEM_PROMPT, userPrompt);
+      const raw = await callOpenAI(SYSTEM_PROMPT, buildUserPrompt(req.body));
       data = extractJson(raw);
     } catch (err) {
-      return res.status(500).json({ error: `خطا در تولید محتوا: ${err.message.slice(0, 200)}` });
+      return res.status(500).json({ error: `خطا در تولید محتوا: ${err.message.slice(0, 300)}` });
     }
 
     const socialPosts = Array.isArray(data.social_posts) ? data.social_posts.map(String).slice(0, 6) : [];
     const platforms = Array.isArray(data.recommended_platforms) ? data.recommended_platforms.map(String).slice(0, 6) : [];
     const keywords = Array.isArray(data.keywords) ? data.keywords.map(String).slice(0, 12) : [];
 
-    const doc = await Content.create({
-      contentId: uuidv4(),
-      userId: req.user.userId,
+    const doc = {
+      id: uuidv4(),
+      user_id: req.user.id,
       input: req.body,
       title: String(data.title || `محتوای ${exam_name}`).trim(),
       summary: String(data.summary || '').trim(),
@@ -103,10 +87,11 @@ router.post('/generate', async (req, res) => {
       best_cta: String(data.best_cta || '').trim(),
       keywords,
       favorite: false,
-    });
-
-    const { _id, __v, ...out } = doc.toObject();
-    return res.json(out);
+      created_at: nowISO(),
+      updated_at: nowISO(),
+    };
+    await Content.create(doc);
+    return res.json(doc);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -115,26 +100,15 @@ router.post('/generate', async (req, res) => {
 router.post('/prompt', async (req, res) => {
   try {
     const { exam_name, rank, goal = 'تولید محتوای آموزشی', target_tool = 'ChatGPT' } = req.body;
-    const userText = `یک مجموعه پرامپت حرفه‌ای بساز برای استفاده در ${target_tool}.
-موضوع: تجربه قبولی در ${exam_name} با رتبه ${rank}
-هدف: ${goal}
-
-خروجی JSON دقیقاً با این ساختار:
-{
-  "short_prompt": "پرامپت کوتاه و سریع",
-  "detailed_prompt": "پرامپت کامل و حرفه‌ای با context و نقش‌دهی",
-  "video_prompt": "پرامپت مخصوص تولید اسکریپت ویدیو",
-  "notebook_prompt": "پرامپت مخصوص ساخت نوت‌بوک آموزشی",
-  "slide_prompt": "پرامپت مخصوص ساخت اسلاید"
-}
-فقط JSON برگردان.`;
-
+    const userText = `یک مجموعه پرامپت حرفه‌ای بساز برای ${target_tool}. موضوع: قبولی در ${exam_name} رتبه ${rank}. هدف: ${goal}.
+خروجی JSON:{"short_prompt":"...","detailed_prompt":"...","video_prompt":"...","notebook_prompt":"...","slide_prompt":"..."}
+فقط JSON.`;
     let data;
     try {
       const raw = await callOpenAI(SYSTEM_PROMPT, userText);
       data = extractJson(raw);
     } catch (err) {
-      return res.status(500).json({ error: `خطا در تولید پرامپت: ${err.message.slice(0, 200)}` });
+      return res.status(500).json({ error: `خطا در تولید پرامپت: ${err.message.slice(0, 300)}` });
     }
     return res.json(data);
   } catch (err) {
@@ -144,8 +118,9 @@ router.post('/prompt', async (req, res) => {
 
 router.get('/list', async (req, res) => {
   try {
-    const items = await Content.find({ userId: req.user.userId }).sort({ createdAt: -1 }).lean();
-    return res.json(items.map(({ _id, __v, ...i }) => i));
+    const q = await Content.find({ user_id: req.user.id });
+    const items = await (q.sort ? q.sort({ created_at: -1 }).lean() : Promise.resolve(q));
+    return res.json(Array.isArray(items) ? items : []);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -153,10 +128,9 @@ router.get('/list', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const item = await Content.findOne({ contentId: req.params.id, userId: req.user.userId }).lean();
+    const item = await Content.findOne({ id: req.params.id, user_id: req.user.id });
     if (!item) return res.status(404).json({ error: 'محتوا پیدا نشد' });
-    const { _id, __v, ...out } = item;
-    return res.json(out);
+    return res.json(item);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -165,18 +139,12 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const allowed = ['title', 'summary', 'blog_post', 'video_script', 'notebook_notes', 'social_posts', 'resume_summary', 'recommended_prompt', 'recommended_platforms', 'keywords', 'favorite'];
-    const update = {};
-    for (const k of allowed) {
-      if (req.body[k] != null) update[k] = req.body[k];
-    }
-    if (!Object.keys(update).length) return res.status(400).json({ error: 'تغییری ارسال نشد' });
-
-    const result = await Content.updateOne({ contentId: req.params.id, userId: req.user.userId }, { $set: update });
+    const update = { updated_at: nowISO() };
+    for (const k of allowed) { if (req.body[k] != null) update[k] = req.body[k]; }
+    const result = await Content.updateOne({ id: req.params.id, user_id: req.user.id }, { $set: update });
     if (result.matchedCount === 0) return res.status(404).json({ error: 'محتوا پیدا نشد' });
-
-    const item = await Content.findOne({ contentId: req.params.id }).lean();
-    const { _id, __v, ...out } = item;
-    return res.json(out);
+    const item = await Content.findOne({ id: req.params.id });
+    return res.json(item);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -184,7 +152,7 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const result = await Content.deleteOne({ contentId: req.params.id, userId: req.user.userId });
+    const result = await Content.deleteOne({ id: req.params.id, user_id: req.user.id });
     if (result.deletedCount === 0) return res.status(404).json({ error: 'محتوا پیدا نشد' });
     return res.json({ success: true });
   } catch (err) {

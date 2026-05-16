@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 
 const contentSchema = new mongoose.Schema({
-  contentId: { type: String, required: true, unique: true },
-  userId: { type: String, required: true },
+  id: { type: String, required: true, unique: true },
+  user_id: { type: String, required: true },
   input: { type: Object },
   title: String,
   summary: String,
@@ -17,6 +17,19 @@ const contentSchema = new mongoose.Schema({
   best_cta: String,
   keywords: [String],
   favorite: { type: Boolean, default: false },
-}, { timestamps: true });
+  created_at: { type: String },
+  updated_at: { type: String },
+}, { versionKey: false });
 
-module.exports = mongoose.model('Content', contentSchema);
+contentSchema.set('toJSON', { transform: (doc, ret) => { delete ret._id; return ret; } });
+contentSchema.set('toObject', { transform: (doc, ret) => { delete ret._id; return ret; } });
+
+const MongoModel = mongoose.model('Content', contentSchema);
+
+module.exports = new Proxy({}, {
+  get(_, prop) {
+    const model = global.__memModels?.Content || MongoModel;
+    const val = model[prop];
+    return typeof val === 'function' ? val.bind(model) : val;
+  }
+});
