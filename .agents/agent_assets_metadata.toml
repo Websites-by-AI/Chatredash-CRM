@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "YYhk6sYlFPGJYn8wTZT89"
+uri = "file://cpanel-rotbe-bartar.tar.gz"
+type = "unspecified"
+title = "پکیج سی‌پنل — رتبه برتر + ترنم مهر"
