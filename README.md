@@ -164,3 +164,4 @@ rotbe-bartar/
 ```
 # Taranom-psychology-school-2
 # Rotbe-bartar-by-taranom-mehr-trash-1
+# Rotbe-bartar-by-taranom-mehr-trash-1
