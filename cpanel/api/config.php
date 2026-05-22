@@ -60,16 +60,23 @@ function jwt_verify(string $token): ?array {
 }
 
 // ─── توابع کمکی ─────────────────────────────────────────────────────────────
-function json_out(mixed $data, int $code = 200): never {
+function json_out($data, $code = 200) {
     http_response_code($code);
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode($data, JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-function get_bearer(): ?string {
-    $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
-    if (str_starts_with($auth, 'Bearer ')) return substr($auth, 7);
+function get_bearer() {
+    $auth = isset($_SERVER['HTTP_AUTHORIZATION']) ? $_SERVER['HTTP_AUTHORIZATION'] : '';
+    if (!$auth && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+        $auth = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+    }
+    if (!$auth && function_exists('apache_request_headers')) {
+        $headers = apache_request_headers();
+        $auth = isset($headers['Authorization']) ? $headers['Authorization'] : '';
+    }
+    if (strpos($auth, 'Bearer ') === 0) return substr($auth, 7);
     return null;
 }
 

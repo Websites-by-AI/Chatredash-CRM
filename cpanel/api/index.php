@@ -1,5 +1,5 @@
 <?php
-declare(strict_types=1);
+// سازگار با PHP 7.4+
 
 // ─── هدرها ───────────────────────────────────────────────────────────────────
 header('Content-Type: application/json; charset=utf-8');
@@ -530,7 +530,7 @@ if ($method === 'POST' && $uri === '/chat') {
         'استرس'   => 'قبل از آزمون نفس عمیق بکش. مشکل استرس آزمون رو با تمرین مکرر حل کن.',
     ];
     $reply = 'چه سوال خوبی! بیشتر توضیح بده تا بتونم بهتر راهنماییت کنم.';
-    foreach ($replies as $k => $v) { if (str_contains($lm, $k)) { $reply = $v; break; } }
+    foreach ($replies as $k => $v) { if (strpos($lm, $k) !== false) { $reply = $v; break; } }
     json_out(['reply' => $reply]);
 }
 
