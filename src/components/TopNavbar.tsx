@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Sparkles, Layers, Search, Bell, HelpCircle, LogOut } from 'lucide-react';
+import { Shield, Sparkles, Layers, Search, Bell, HelpCircle, LogOut, Users, Zap, Wallet } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import ThemeSwitcher from './ThemeSwitcher';
 
@@ -13,8 +13,11 @@ const TopNavbar: React.FC<TopNavbarProps> = ({ activeTab, setActiveTab, onLogout
   const { themeColor, colorClass, bgClass, ringClass } = useTheme();
 
   const menuItems = [
-    { id: 'home', label: '🎓 پرتال داوطلب کنکور (CRM)', icon: Sparkles },
-    { id: 'courses', label: '👥 سامانه نظارت آنلاین والدین', icon: Shield },
+    { id: 'home', label: '📊 داشبورد تحلیلی CRM', icon: Sparkles },
+    { id: 'courses', label: '🏫 مدیریت شعب و انبار', icon: Shield },
+    { id: 'team', label: '👥 مدیریت مشاوران و تیم', icon: Users },
+    { id: 'revenue', label: '💰 مدیریت مالی و شهریه', icon: Wallet },
+    { id: 'migration', label: '🚀 مرکز انتقال داده', icon: Zap },
     { id: 'marketplace', label: '📐 سند معماری و نقشه راه SaaS', icon: Layers },
   ];
 

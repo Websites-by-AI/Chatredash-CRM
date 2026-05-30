@@ -4,12 +4,16 @@ import TopNavbar from './TopNavbar';
 import CoursesHub from './CoursesHub';
 import ProjectStore from './ProjectStore';
 import HomeLanding from './HomeLanding';
-import { Shield, Key, Sparkles } from 'lucide-react';
+import EmployeeManager from './EmployeeManager';
+import DataMigration from './DataMigration';
+import RevenueManager from './RevenueManager';
+import { Shield, Key, Sparkles, Zap } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 const Layout: React.FC = () => {
   const { bgClass } = useTheme();
   const [activeTab, setActiveTab] = useState('home');
+  const [activeDep, setActiveDep] = useState('داوطلبان');
   const [isLoggedIn, setIsLoggedIn] = useState(true);
 
   // Simple state for login forms
@@ -23,10 +27,13 @@ const Layout: React.FC = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'home': return <HomeLanding setActiveTab={setActiveTab} />;
-      case 'courses': return <CoursesHub />;
+      case 'home': return <HomeLanding setActiveTab={setActiveTab} setActiveDep={setActiveDep} />;
+      case 'courses': return <CoursesHub activeDep={activeDep} setActiveDep={setActiveDep} />;
+      case 'team': return <EmployeeManager />;
+      case 'revenue': return <RevenueManager />;
+      case 'migration': return <DataMigration />;
       case 'marketplace': return <ProjectStore />;
-      default: return <HomeLanding setActiveTab={setActiveTab} />;
+      default: return <HomeLanding setActiveTab={setActiveTab} setActiveDep={setActiveDep} />;
     }
   };
 

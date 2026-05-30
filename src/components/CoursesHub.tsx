@@ -21,14 +21,22 @@ const initialDossiers = [
 ];
 
 const departmentLogs: Record<string, string> = {
-  'CRM داوطلبان': 'سیستم CRM فعال است. ثبت لیدها و ارتباطات تلفنی چتر دانش بدون وقفه در جریان می‌باشد.',
+  'داوطلبان': 'سیستم CRM فعال است. ثبت لیدها و ارتباطات تلفنی چتر دانش بدون وقفه در جریان می‌باشد.',
   'کنترل کلاسها': 'مشاهده لیست وبینارهای فعال. ۴ دوره به صورت همزمان بدون افت فریم برگزار می‌گردد.',
-  'انبار کتب و جزوات': 'وضعیت بحرانی در موجودی انبار انقلاب. به دلیل سرعت بالای ثبت نام، تنها ۱ کاتالوگ در دست است و فراخوان چاپ داده شده است.',
+  'انبار کتب و جزوات': 'وضعیت بحرانی در موجودی انبار انقلاب. به دلیل سرعت بالای ثبت نام، تنها ۱ پکیج کاتالوگ جامع در دست است و فراخوان چاپ فوری داده شده است.',
   'فروش و درگاهها': 'مجموع درآمدها به ۲۴.۱ میلیون تومان رسیده است و ۸۸٪ از تارگت این فصلی به طور کامل محقق شد.',
   'پیک و توزیع شهری': 'توزیع ۳۲ پکیج آزمون کتب مدنی با پیک موتوری حومه تهران با نرخ رضایت ۱۰۰٪.',
   'ممیزی سوالات': 'تطبیق سوالات آزمون آزمایشی وکالت با آخرین اصلاحات قوانین خاص سال ۱۴۰۵ به پایان رسید.',
   'مدیریت حسابها': 'تسویه حساب مشاوران ارشد دپارتمان از جمله آقای دکتر کریمی و خانم علوی انجام پذیرفت.'
 };
+
+const inventoryItems = [
+  { id: 'KB-01', title: 'دوره طلایی متون فقه', author: 'دکتر کریمی', stock: 124, price: '۴۵۰,۰۰۰', status: 'موجود' },
+  { id: 'KB-02', title: 'حقوق مدنی ۱ تا ۸ (پیشرفته)', author: 'استاد کاتوزیان', stock: 12, price: '۸۸۰,۰۰۰', status: 'بحرانی' },
+  { id: 'KB-03', title: 'آیین دادرسی کیفری (دوجلدی)', author: 'دکتر خالقی', stock: 85, price: '۵۹۰,۰۰۰', status: 'موجود' },
+  { id: 'KB-04', title: 'جزوه طلایی کایزن وکالت (۱۴۰۶)', author: 'دپارتمان چتر دانش', stock: 1, price: '۲۲۰,۰۰۰', status: 'بحرانی' },
+  { id: 'KB-05', title: 'حقوق تجارت (بسته نموداری)', author: 'دکتر معتمدی', stock: 210, price: '۴۱۰,۰۰۰', status: 'موجود' },
+];
 
 const chartData = [
   { name: 'هفته ۲', score: 4500, predictScore: 4500 },
@@ -41,12 +49,16 @@ const chartData = [
 
 const COLORS = ['#4f46e5', '#d97706', '#059669', '#9333ea'];
 
-const CoursesHub: React.FC = () => {
+interface CoursesHubProps {
+  activeDep: string;
+  setActiveDep: (dep: string) => void;
+}
+
+const CoursesHub: React.FC<CoursesHubProps> = ({ activeDep, setActiveDep }) => {
   const { colorClass, bgClass, ringClass } = useTheme();
 
   const [dossiers, setDossiers] = useState(initialDossiers);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeDep, setActiveDep] = useState('CRM داوطلبان');
   
   // Registration Form states
   const [regName, setRegName] = useState('');
@@ -187,7 +199,7 @@ const CoursesHub: React.FC = () => {
         {/* Matrix Nodes Row */}
         <div className="flex flex-wrap gap-2 pt-2 border-t border-white/10">
           {[
-            'CRM داوطلبان', 'کنترل کلاسها', 'انبار کتب و جزوات', 
+            'داوطلبان', 'کنترل کلاسها', 'انبار کتب و جزوات', 
             'فروش و درگاهها', 'پیک و توزیع شهری', 'ممیزی سوالات', 'مدیریت حسابها'
           ].map((dep) => {
             const isActive = activeDep === dep;
@@ -209,14 +221,90 @@ const CoursesHub: React.FC = () => {
         </div>
 
         {/* Active Node Report Details */}
-        <div className="bg-white/5 rounded-2xl p-5 border border-white/10 animate-fadeIn">
-          <div className="flex items-center gap-2 mb-2 text-amber-300">
-            <Info size={14} />
-            <span className="text-[10.5px] font-black uppercase tracking-wider">{activeDep} • گزارش سیستمی کایزن</span>
+        <div className="bg-white/5 rounded-2xl p-5 border border-white/10 animate-fadeIn space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-amber-300">
+              <Info size={14} />
+              <span className="text-[10.5px] font-black uppercase tracking-wider">{activeDep} • گزارش سیستمی کایزن</span>
+            </div>
+            {activeDep === 'انبار کتب و جزوات' && (
+              <span className="text-[9px] bg-red-600 text-white px-2 py-0.5 rounded-lg animate-pulse font-black">هشدار موجودی فیزیکی</span>
+            )}
           </div>
-          <p className="text-xs sm:text-xs text-gray-100 font-bold leading-relaxed">
+          
+          <p className="text-xs sm:text-xs text-gray-100 font-bold leading-relaxed border-b border-white/5 pb-4">
             {departmentLogs[activeDep]}
           </p>
+
+          {/* Conditional Inventory Table for Books Dept */}
+          {activeDep === 'انبار کتب و جزوات' && (
+            <div className="space-y-4">
+              <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-950/50">
+                <table className="w-full text-[10px] text-right">
+                  <thead className="bg-white/5 text-gray-400 font-black">
+                    <tr>
+                      <th className="px-4 py-3">کد کالا</th>
+                      <th className="px-4 py-3">عنوان کتاب / جزوه</th>
+                      <th className="px-4 py-3 font-mono">Stock</th>
+                      <th className="px-4 py-3">واحد قیمت (تومان)</th>
+                      <th className="px-4 py-3">وضعیت</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {inventoryItems.map((item) => (
+                      <tr key={item.id} className="hover:bg-white/5 transition-colors">
+                        <td className="px-4 py-2.5 font-mono text-gray-500">{item.id}</td>
+                        <td className="px-4 py-2.5 font-black text-gray-200">{item.title}</td>
+                        <td className={`px-4 py-2.5 font-mono font-black ${item.stock < 20 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                          {item.stock}
+                        </td>
+                        <td className="px-4 py-2.5 text-gray-300 font-mono">{item.price}</td>
+                        <td className="px-4 py-2.5">
+                          <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-black ${
+                            item.status === 'بحرانی' ? 'bg-rose-500/20 text-rose-300' : 'bg-emerald-500/20 text-emerald-300'
+                          }`}>
+                            {item.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 bg-white/5 border border-white/10 rounded-xl space-y-3">
+                  <h4 className="text-[11px] font-black text-amber-300 flex items-center gap-2">
+                    <TrendingUp size={13} />
+                    درخواست تمدید چاپ (فوری)
+                  </h4>
+                  <div className="flex gap-2">
+                    <select className="flex-1 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold text-gray-200 outline-none">
+                      <option>انتخاب جزوه بحرانی...</option>
+                      <option>جزوه طلایی کایزن وکالت</option>
+                      <option>حقوق مدنی ۱ تا ۸</option>
+                    </select>
+                    <button className="bg-amber-400 text-slate-950 px-4 py-2 rounded-lg text-[10px] font-black hover:bg-amber-300 transition-colors">
+                      ارسال به چاپخانه
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="p-4 bg-white/5 border border-white/10 rounded-xl space-y-3">
+                  <h4 className="text-[11px] font-black text-indigo-300 flex items-center gap-2">
+                    <Plus size={13} />
+                    ثبت ورود بار جدید به انبار
+                  </h4>
+                  <div className="flex gap-2">
+                    <input type="number" placeholder="تعداد واحد..." className="w-24 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold text-gray-200 outline-none" />
+                    <button className="flex-1 bg-indigo-500 text-white px-4 py-2 rounded-lg text-[10px] font-black hover:bg-indigo-400 transition-colors">
+                      به‌روزرسانی موجودی
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
       </section>

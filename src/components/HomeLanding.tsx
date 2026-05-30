@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, User, Phone, BookOpen, UserCheck, Calendar, FileText, 
-  Send, RefreshCw, Printer, Search, Filter, Plus, MessageSquare, Check, X, ShieldAlert, Cpu
+  Send, RefreshCw, Printer, Search, Filter, Plus, MessageSquare, Check, X, ShieldAlert, Cpu, Users, Database,
+  BarChart3, TrendingUp, Zap, Target, CreditCard
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import jsPDF from 'jspdf';
 
 interface HomeLandingProps {
   setActiveTab: (tab: string) => void;
+  setActiveDep: (dep: string) => void;
 }
 
 // Fixed mock legal leads matching precisely the user list
@@ -86,7 +88,15 @@ const initialLeads = [
   }
 ];
 
-const HomeLanding: React.FC<HomeLandingProps> = ({ setActiveTab }) => {
+// Lead scoring system mock
+const leadStats = [
+  { label: 'لیدهای داغ (Hot)', count: 42, color: 'text-rose-500', bg: 'bg-rose-50' },
+  { label: 'درآمد پیش‌بینی شده (Pipeline)', count: '۲.۴ میلیارد', color: 'text-indigo-500', bg: 'bg-indigo-50' },
+  { label: 'نرخ وصول مطالبات', count: '٪۹۱.۸', color: 'text-emerald-500', bg: 'bg-emerald-50' },
+  { label: 'میانگین سبد خرید دانشجو', count: '۱۲.۵ میلیون', color: 'text-amber-500', bg: 'bg-amber-50' },
+];
+
+const HomeLanding: React.FC<HomeLandingProps> = ({ setActiveTab, setActiveDep }) => {
   const { colorClass, bgClass, ringClass } = useTheme();
   
   const [leads, setLeads] = useState(initialLeads);
@@ -106,6 +116,33 @@ const HomeLanding: React.FC<HomeLandingProps> = ({ setActiveTab }) => {
   const [formCourse, setFormCourse] = useState('وکالت کانون کلا (اسکودا)');
   const [formIntensity, setFormIntensity] = useState('HOT 🔥');
   const [formSummary, setFormSummary] = useState('');
+
+  const kanbanRef = React.useRef<HTMLDivElement>(null);
+
+  const crmModules = [
+    { title: 'داوطلبان', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50', action: 'scroll' },
+    { title: 'کنترل کلاسها', icon: BookOpen, color: 'text-amber-600', bg: 'bg-amber-50', action: 'tab' },
+    { title: 'انبار کتب و جزوات', icon: Database, color: 'text-emerald-600', bg: 'bg-emerald-50', action: 'tab' },
+    { title: 'فروش و درگاهها', icon: CreditCard, color: 'text-purple-600', bg: 'bg-purple-50', action: 'revenue' },
+    { title: 'پیک و توزیع شهری', icon: Send, color: 'text-blue-600', bg: 'bg-blue-50', action: 'tab' },
+    { title: 'مدیریت مشاوران', icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-50', action: 'team' },
+    { title: 'مهاجرت داده', icon: Zap, color: 'text-amber-600', bg: 'bg-amber-50', action: 'migration' },
+  ];
+
+  const handleModuleClick = (mod: typeof crmModules[0]) => {
+    if (mod.action === 'scroll') {
+      kanbanRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (mod.action === 'revenue') {
+      setActiveTab('revenue');
+    } else if (mod.action === 'team') {
+      setActiveTab('team');
+    } else if (mod.action === 'migration') {
+      setActiveTab('migration');
+    } else {
+      setActiveDep(mod.title);
+      setActiveTab('courses');
+    }
+  };
 
   // Selected lead getter
   const selectedLead = leads.find(l => l.id === selectedLeadId) || leads[0];
@@ -271,70 +308,171 @@ const HomeLanding: React.FC<HomeLandingProps> = ({ setActiveTab }) => {
   };
 
   return (
-    <div className="space-y-8" dir="rtl">
-      
-      {/* SaaS Status Alert Banner mimicking cloud microservice */}
-      <div className="bg-slate-900 border border-slate-800 text-white rounded-2xl px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
-        <div className="flex items-center gap-3">
-          <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse shrink-0"></div>
-          <span className="text-xs font-black text-emerald-400">سامانه ابری و میکروسرویسی چتر دانش فعال است</span>
-        </div>
-        <div className="flex flex-wrap gap-2.5">
-          <button 
-            type="button" 
-            onClick={() => setActiveTab('saas')}
-            className="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-bold text-gray-200 hover:text-white transition-all border border-white/5 flex items-center gap-1.5"
-          >
-            📐 سند معماری و نقشه راه SaaS (ادمین)
-          </button>
-          <button 
-            type="button" 
-            onClick={() => setActiveTab('parents')}
-            className="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-bold text-gray-200 hover:text-white transition-all border border-white/5 flex items-center gap-1.5"
-          >
-            👥 سامانه نظارت آنلاین والدین
-          </button>
-        </div>
-      </div>
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="space-y-10"
+      dir="rtl"
+    >
+      {/* CRM Funnel & Intelligence Header */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="lg:col-span-8 space-y-6">
+          <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50/50 rounded-full blur-3xl -mr-32 -mt-32" />
+            
+            <div className="relative">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight leading-tight">
+                    پنل هوشمند <span className={colorClass}>مدیریت لید کایزن</span>
+                  </h1>
+                  <p className="text-sm font-bold text-gray-500 mt-2 max-w-xl">
+                    بررسی لحظه‌ای چرخه عمر دانشجو: از اولین تعامل تا موفقیت در آزمون وکالت و قضاوت
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setShowAddForm(true)}
+                  className={`px-6 py-3 rounded-2xl text-xs font-black text-white ${bgClass} hover:opacity-90 transition-all shadow-md flex items-center gap-2`}
+                >
+                  <Plus size={16} />
+                  ثبت پرونده جدید
+                </button>
+              </div>
 
-      {/* Hero Header */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3.5xl font-black text-gray-950 flex items-center gap-2">
-            سیستم CRM هوشمند چتر دانش
-          </h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1.5 leading-relaxed">
-            سامانه هوشمند ثبت لید، هدایت تحصیلی و مدیریت ارتباط با متقاضیان دوره‌های آمادگی آزمون‌های وکالت، قضاوت، سردفتری و ارشد حقوق.
-          </p>
-        </div>
-        <button 
-          onClick={() => setShowAddForm(true)}
-          className={`px-5 py-3 rounded-2xl text-xs font-black text-white ${bgClass} hover:opacity-90 transition-all shadow-md flex items-center gap-2`}
-        >
-          <Plus size={16} />
-          <span>ثبت پرونده و لید جدید داوطلب</span>
-        </button>
-      </header>
-
-      {/* 5 KPI Cards Row */}
-      <section className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {[
-          { title: 'مجموع لیدها', value: `${totalLeadsCount} نفر`, desc: 'کل پرونده‌های ثبت‌شده', color: 'bg-indigo-50 border-indigo-100 text-indigo-700' },
-          { title: 'پرونده داغ 🔥', value: `${hotLeadsCount} لید`, desc: 'آماده ثبت‌نام نهایی', color: 'bg-red-50 border-red-100 text-red-700' },
-          { title: 'ولرم (پیگیری ملایم)', value: `${warmLeadsCount} لید`, desc: 'نیازمند تماس تکمیلی', color: 'bg-amber-50 border-amber-100 text-amber-600' },
-          { title: 'ثبتنام شده نهایی ✔', value: `${registeredCount} داوطلب`, desc: 'کلاس‌های رول شده', color: 'bg-emerald-50 border-emerald-100 text-emerald-700' },
-          { title: 'نرخ تبدیل نهایی', value: `${conversionRate}٪`, desc: 'موفقیت جذب لید ملایم', color: 'bg-teal-50 border-teal-100 text-teal-700 font-mono' },
-        ].map((kpi, idx) => (
-          <div key={idx} className={`p-4 rounded-2.5xl border ${kpi.color} shadow-sm flex flex-col justify-between space-y-1.5`}>
-            <span className="text-[10px] font-bold opacity-80">{kpi.title}</span>
-            <span className="text-lg sm:text-2xl font-black tracking-tight">{kpi.value}</span>
-            <span className="text-[9px] opacity-70 leading-relaxed font-semibold">{kpi.desc}</span>
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8">
+                {leadStats.map((stat, i) => (
+                  <div key={i} className={`p-4 rounded-2xl ${stat.bg} border border-white/50`}>
+                    <span className="text-[10px] font-black text-gray-400 block mb-1">{stat.label}</span>
+                    <span className={`text-lg font-black ${stat.color}`}>{stat.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        ))}
+          
+          {/* Funnel Visualization */}
+          <div className="bg-slate-950 p-8 rounded-[2rem] text-white shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-transparent" />
+            </div>
+            
+            <div className="flex items-center justify-between mb-8 relative z-10">
+              <h3 className="text-sm font-black flex items-center gap-2">
+                <BarChart3 size={18} className="text-indigo-400" />
+                آنالیز قیف ثبت‌نام (Enrolment Funnel)
+              </h3>
+              <div className="flex items-center gap-4 text-[10px] font-bold text-gray-400">
+                <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-indigo-500" /> ورودی جدید</span>
+                <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500" /> ثبت‌نام قطعی</span>
+              </div>
+            </div>
+            
+            <div className="space-y-6 relative z-10">
+              {[
+                { stage: 'بازدیدکننده وبسایت', count: 12400, percent: 100, color: 'bg-indigo-500' },
+                { stage: 'لیدهای راستی‌آزمایی شده', count: 3200, percent: 65, color: 'bg-indigo-400' },
+                { stage: 'مشاوره آموزشی موفق', count: 850, percent: 40, color: 'bg-indigo-300' },
+                { stage: 'ثبت‌نام نهایی کایزن', count: 210, percent: 12, color: 'bg-emerald-500' },
+              ].map((step, idx) => (
+                <div key={idx} className="space-y-2">
+                  <div className="flex justify-between text-[11px] font-black">
+                    <span className="text-gray-300">{step.stage}</span>
+                    <span>{step.count.toLocaleString()} نفر</span>
+                  </div>
+                  <div className="h-2.5 bg-white/5 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${step.percent}%` }}
+                      className={`h-full ${step.color} shadow-[0_0_15px_rgba(99,102,241,0.3)]`}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Real-time Feed */}
+        <div className="lg:col-span-4 bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm h-full flex flex-col">
+          <h3 className="font-black text-gray-900 text-sm mb-6 flex items-center gap-2">
+            <Sparkles size={16} className="text-amber-500" />
+            فعالیت‌های اخیر سیستم CRM
+          </h3>
+          <div className="space-y-5 flex-1">
+            {[
+              { user: 'علی رمضانی', action: 'پکیج وکالت را خریداری کرد', time: '۲ دقیقه پیش', type: 'SALE' },
+              { user: 'سارا سعادت', action: 'درخواست مشاوره رزرو کرد', time: '۱۵ دقیقه پیش', type: 'LEAD' },
+              { user: 'سیستم هوشمند', action: '۸۴ لید جدید فراخوانی شد', time: '۱ ساعت پیش', type: 'SYSTEM' },
+              { user: 'دکتر کریمی', action: 'جلسه وبینار را آغاز کرد', time: '۳ ساعت پیش', type: 'ACTION' },
+            ].map((act, i) => (
+              <div key={i} className="flex gap-3 relative pb-5 border-r-2 border-gray-50 pr-4 mr-2 last:border-0 last:pb-0">
+                <div className={`absolute top-0 -right-[7px] w-3 h-3 rounded-full border-2 border-white ${
+                  act.type === 'SALE' ? 'bg-emerald-500' : act.type === 'LEAD' ? 'bg-amber-500' : 'bg-indigo-500'
+                }`} />
+                <div>
+                  <h4 className="text-[11px] font-black text-gray-900">{act.user}</h4>
+                  <p className="text-[10px] text-gray-400 font-bold mt-0.5">{act.action}</p>
+                  <span className="text-[8px] text-gray-300 mt-1 block">{act.time}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button className="w-full mt-6 py-3 bg-gray-50 rounded-xl text-[10px] font-black text-gray-500 hover:bg-gray-100 transition-colors">
+            مشاهده گزارش کامل فعالیت‌ها
+          </button>
+        </div>
       </section>
 
-      {/* Main CRM Grid (Kanban + Dossier Profile Panel) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* CRM Modules Selection */}
+      <section className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
+        <div className="flex items-center gap-2 mb-4 px-2">
+          <div className="w-1 h-3 bg-indigo-500 rounded-full"></div>
+          <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest">ماژول‌های مرکز فرماندهی (Ops Center)</h3>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+          {crmModules.map((mod, idx) => (
+            <button
+              key={idx}
+              onClick={() => handleModuleClick(mod)}
+              className="group flex flex-col items-center justify-center p-4 rounded-2.5xl border border-gray-100 hover:border-indigo-100 hover:bg-indigo-50/30 transition-all space-y-3 active:scale-95 shadow-sm"
+            >
+              <div className={`p-2.5 rounded-2xl ${mod.bg} ${mod.color} group-hover:scale-110 transition-transform`}>
+                <mod.icon size={20} />
+              </div>
+              <span className="text-[10px] font-black text-gray-700">{mod.title}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* KPIs & Pipeline Board */}
+      <div ref={kanbanRef} className="space-y-8 scroll-mt-24">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-black text-gray-900">مدیریت خط لوله داوطلبان (Pipeline)</h2>
+            <p className="text-[10px] text-gray-400 font-bold mt-1">تخصیص و هدایت هوشمند لیدها به دپارتمان‌های مربوطه</p>
+          </div>
+        </div>
+
+        {/* 5 KPI Cards Row */}
+        <section className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {[
+            { title: 'مجموع لیدها', value: `${totalLeadsCount} نفر`, desc: 'کل پرونده‌های ثبت‌شده', color: 'bg-indigo-50 border-indigo-100 text-indigo-700' },
+            { title: 'پرونده داغ 🔥', value: `${hotLeadsCount} لید`, desc: 'آماده ثبت‌نام نهایی', color: 'bg-red-50 border-red-100 text-red-700' },
+            { title: 'ولرم (پیگیری ملایم)', value: `${warmLeadsCount} لید`, desc: 'نیازمند تماس تکمیلی', color: 'bg-amber-50 border-amber-100 text-amber-600' },
+            { title: 'ثبتنام شده نهایی ✔', value: `${registeredCount} داوطلب`, desc: 'کلاس‌های رول شده', color: 'bg-emerald-50 border-emerald-100 text-emerald-700' },
+            { title: 'نرخ تبدیل نهایی', value: `${conversionRate}٪`, desc: 'موفقیت جذب لید ملایم', color: 'bg-teal-50 border-teal-100 text-teal-700 font-mono' },
+          ].map((kpi, idx) => (
+            <div key={idx} className={`p-4 rounded-2.5xl border ${kpi.color} shadow-sm flex flex-col justify-between space-y-1.5`}>
+              <span className="text-[10px] font-bold opacity-80">{kpi.title}</span>
+              <span className="text-lg sm:text-2xl font-black tracking-tight">{kpi.value}</span>
+              <span className="text-[9px] opacity-70 leading-relaxed font-semibold">{kpi.desc}</span>
+            </div>
+          ))}
+        </section>
+
+        {/* Kanban Area */}
         
         {/* Kanban Board Area */}
         <div className="lg:col-span-8 space-y-6">
@@ -689,14 +827,14 @@ const HomeLanding: React.FC<HomeLandingProps> = ({ setActiveTab }) => {
               </button>
 
               <div>
-                <h3 className="text-lg font-black text-gray-900">ثبت رسمی لید و متقاضی جدید چتر دانش</h3>
+                <h3 className="text-lg font-black text-gray-900">ثبتنام داوطلب و پرونده تلفنی جدید</h3>
                 <p className="text-xs text-gray-400 mt-1">پیش‌نویس مشخصات اولیه متقاضی برای ارسال به کارتابل دکتر کریمی</p>
               </div>
 
               <form onSubmit={handleCreateLead} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-gray-400 block">نام و نام خانوادگی داوطلب</label>
+                    <label className="text-[11px] font-bold text-gray-400 block">نام و نام خانوادگی داوطلب:</label>
                     <input 
                       type="text"
                       required
@@ -786,7 +924,7 @@ const HomeLanding: React.FC<HomeLandingProps> = ({ setActiveTab }) => {
         پلتفرم هوشمند آموزشی و برنامه‌ریزی درسی چتر دانش بر اساس مدل ارزیابی کایزن و آزمون‌های حقوقی وکالت • کپی‌رایت ۱۴۰۵ - ۱۴۰۶
       </footer>
 
-    </div>
+    </motion.div>
   );
 };
 
